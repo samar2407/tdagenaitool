@@ -4,7 +4,7 @@ A simple app that takes user input, sends it to an LLM (Llama 3.3 70B via Groq A
 
 ## Deployed link to run it on the browser of any machine
 
-https://basic-ai-tool.onrender.com
+https://basic-ai-tool.onrender.com (deployed using render.com)
 
 ## Features
 
