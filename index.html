@@ -32,6 +32,7 @@
   <div id="output"></div>
 
   <script>
+    let history=[];
     async function generate() {
       const choice = document.getElementById("feature").value;
       const userInput = document.getElementById("userInput").value;
@@ -49,13 +50,25 @@
       const res = await fetch("/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ choice, user_input: userInput })
+        body: JSON.stringify({ choice, user_input: userInput, history })
       });
 
       const data = await res.json();
       loading.style.display = "none";
       output.textContent = data.response || data.error;
+      if (data.error) {
+      output.textContent = data.error;
+      return;
     }
+    history.push({ role: "user", content: userInput });
+    history.push({ role: "assistant", content: data.response });
+    output.innerHTML += `<p><b>You:</b> ${userInput}</p><p><b>AI:</b> ${data.response}</p>`;
+    document.getElementById("userInput").value = "";
+    }
+    function clearChat() {
+    history = [];
+    document.getElementById("output").innerHTML = "";
+  }
   </script>
 </body>
 </html>
