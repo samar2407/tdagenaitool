@@ -26,19 +26,22 @@ def generate():
     data = request.json
     choice = data.get("choice")
     user_input = data.get("user_input", "").strip()
+    history = data.get("history", [])
 
     if not user_input:
         return jsonify({"error": "Input cannot be empty."}), 400
 
     if choice not in system_prompts:
         return jsonify({"error": "Invalid choice."}), 400
-
+    
+    messages=[
+            {"role": "system", "content": system_prompts[choice]}]
+    messages.extend(history)
+    messages.append({"role": "user",   "content": user_input})
+    
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
-        messages=[
-            {"role": "system", "content": system_prompts[choice]},
-            {"role": "user",   "content": user_input}
-        ]
+        messages=messages
     )
 
     return jsonify({"response": response.choices[0].message.content})
