@@ -26,6 +26,7 @@
   <textarea id="userInput" placeholder="Enter your text here..."></textarea>
 
   <button onclick="generate()">Generate</button>
+  <button onclick="clearHistory()" style="background: #6b7280; margin-top: 8px;">Clear History</button>
 
   <p id="loading">Thinking...</p>
 
@@ -60,10 +61,18 @@
       output.textContent = data.error;
       return;
     }
-    history.push({ role: "user", content: userInput });
-    history.push({ role: "assistant", content: data.response });
-    output.innerHTML += `<p><b>You:</b> ${userInput}</p><p><b>AI:</b> ${data.response}</p>`;
-    document.getElementById("userInput").value = "";
+    const reply = data.response || data.error;
+    output.textContent = reply;
+    
+    const historyList = document.getElementById("history-list");
+    const entry = document.createElement("div");
+
+    entry.style = "background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; font-size: 14px;";
+    entry.innerHTML = `
+      <p><strong>You:</strong> ${userInput}</p>
+      <p style="margin-top: 6px; color: #374151;"><strong>AI:</strong> ${reply}</p>
+    `;
+    historyList.appendChild(entry);
     }
     function clearChat() {
     history = [];
