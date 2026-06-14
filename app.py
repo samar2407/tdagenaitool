@@ -5,13 +5,13 @@ import numpy as np
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from groq import Groq
-from google import genai
+from together import Together
 
 app = Flask(__name__)
 CORS(app)
 
 groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-gemini_client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
+together_client = Together(api_key=os.environ.get("TOGETHER_API_KEY"))
 
 MODELS = {
     "groq": {
@@ -19,11 +19,10 @@ MODELS = {
         "llama-3.1-8b":  "llama-3.1-8b-instant",
         "mixtral-8x7b":  "mixtral-8x7b-32768",
     },
-    "gemini": {
-        "gemini-2.0-flash": "gemini-2.0-flash",
-        "gemini-2.0-flash-lite": "gemini-2.0-flash-lite",
-        "gemini-1.5-flash": "gemini-1.5-flash-latest",
-        "gemini-1.5-pro":   "gemini-1.5-pro-latest",
+    "together": {
+        "llama-3.3-70b":  "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+        "llama-3.1-8b":   "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo-Free",
+        "deepseek-r1":    "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free",
     }
 }
 
@@ -33,7 +32,7 @@ system_prompts = {
     "3": "You are an expert educator designing a diagnostic quiz. Generate exactly 3 multiple-choice questions on the given topic. Each question must have 4 options (A–D) with only one correct answer. After all 3 questions, provide an answer key with a one-line explanation for why each answer is correct.",
     "4": "You are a senior professional with 20+ years of domain expertise. Rewrite the given text to sound authoritative, precise, and polished. Use confident, active language. Eliminate filler words, vague phrases, and informal tone. The output should be suitable for a formal report, client communication, or executive audience.",
     "5": "You are an experienced hiring manager conducting a real interview. Given the topic or role, generate 8–10 interview questions across three categories: (1) Conceptual: testing theoretical understanding, (2) Practical: testing hands-on experience, (3) Behavioral: testing how the candidate handles real situations. Format them clearly under each category label.",
-    "6": "You are an expert academic coach. Generate a structured, realistic, day-by-day study plan for [SUBJECT] with [HOURS] hours/day over [DAYS] days for a [LEVEL] learner, covering phase breakdown, daily tasks with resources, milestones, and a buffer rule for missed days."
+    "6": "You are an expert academic coach. Generate a structured, realistic, day-by-day study plan for the given subject, covering phase breakdown, daily tasks with resources, milestones, and a buffer rule for missed days."
 }
 
 @app.route("/")
@@ -51,7 +50,6 @@ def generate():
 
     if not user_input:
         return jsonify({"error": "Input cannot be empty."}), 400
-
     if choice not in system_prompts:
         return jsonify({"error": "Invalid choice."}), 400
 
@@ -66,21 +64,13 @@ def generate():
             response = groq_client.chat.completions.create(model=model_id, messages=messages)
             reply = response.choices[0].message.content
 
-        elif provider == "gemini":
-            model_id = MODELS["gemini"].get(model_key, "gemini-2.0-flash")
-
-            contents = []
-            for msg in history:
-                role = "user" if msg["role"] == "user" else "model"
-                contents.append({"role": role, "parts": [{"text": msg["content"]}]})
-            contents.append({"role": "user", "parts": [{"text": user_input}]})
-
-            response = gemini_client.models.generate_content(
-                model=model_id,
-                contents=contents,
-                config={"system_instruction": system}
-            )
-            reply = response.text
+        elif provider == "together":
+            model_id = MODELS["together"].get(model_key, "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free")
+            messages = [{"role": "system", "content": system}]
+            messages.extend(history)
+            messages.append({"role": "user", "content": user_input})
+            response = together_client.chat.completions.create(model=model_id, messages=messages)
+            reply = response.choices[0].message.content
 
         else:
             return jsonify({"error": "Unknown provider."}), 400
@@ -104,11 +94,11 @@ def search():
 
         vecs = []
         for text in all_texts:
-            result = gemini_client.models.embed_content(
-                model="models/text-embedding-004",
-                contents=text
+            response = together_client.embeddings.create(
+                model="togethercomputer/m2-bert-80M-8k-retrieval",
+                input=text
             )
-            vecs.append(np.array(result.embeddings[0].values))
+            vecs.append(np.array(response.data[0].embedding))
 
         query_vec = vecs[0]
         scores = []

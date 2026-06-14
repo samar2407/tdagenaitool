@@ -154,7 +154,7 @@
     <label>Provider</label>
     <select id="provider" onchange="updateModels()">
       <option value="groq">Groq</option>
-      <option value="gemini">Gemini</option>
+      <option value="together">Together AI</option>
     </select>
 
     <label>Model</label>
@@ -169,7 +169,7 @@
       <option value="1">Explain a Concept like im 5</option>
       <option value="2">Summarize Text</option>
       <option value="3">Generate Quiz Questions</option>
-      <option value="4">Proffessional Rewrite</option>
+      <option value="4">Professional Rewrite</option>
       <option value="5">Generate Interview Questions</option>
       <option value="6">Generate a Study Plan</option>
     </select>
@@ -202,13 +202,12 @@
         { value: "llama-3.1-8b",  label: "Llama 3.1 8b" },
         { value: "mixtral-8x7b",  label: "Mixtral 8x7b" },
       ];
-      const geminiModels = [
-        { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
-        { value: "gemini-2.0-flash-lite", label: "Gemini 2.0 Flash Lite" },
-        { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
-        { value: "gemini-1.5-pro",   label: "Gemini 1.5 Pro" },
+      const togetherModels = [
+        { value: "llama-3.3-70b", label: "Llama 3.3 70b (Free)" },
+        { value: "llama-3.1-8b",  label: "Llama 3.1 8b (Free)" },
+        { value: "deepseek-r1",   label: "DeepSeek R1 (Free)" },
       ];
-      const models = provider === "gemini" ? geminiModels : groqModels;
+      const models = provider === "together" ? togetherModels : groqModels;
       modelSelect.innerHTML = models.map(m =>
         `<option value="${m.value}">${m.label}</option>`
       ).join("");
