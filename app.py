@@ -12,7 +12,7 @@ app = Flask(__name__)
 CORS(app)
 
 client = Groq(api_key=os.environ.get("groq_api_key"))
-genai.configure(api_key=os.environ.get("gemini_api_key"))
+genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
 
 MODELS = {
     "groq": {
