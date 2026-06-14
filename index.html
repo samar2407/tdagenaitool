@@ -15,7 +15,6 @@
       min-height: 100vh;
     }
 
-    /* Sidebar */
     #sidebar {
       width: 280px;
       min-width: 280px;
@@ -51,13 +50,7 @@
     }
 
     .history-entry:hover { border-color: #2563eb; }
-
-    .history-entry .you {
-      font-weight: 600;
-      margin-bottom: 4px;
-      color: #1d4ed8;
-    }
-
+    .history-entry .you { font-weight: 600; margin-bottom: 4px; color: #1d4ed8; }
     .history-entry .ai-text {
       color: #374151;
       display: -webkit-box;
@@ -66,7 +59,6 @@
       overflow: hidden;
     }
 
-    /* Main */
     #main { flex: 1; padding: 48px 40px; max-width: 720px; }
 
     h1 { font-size: 24px; margin-bottom: 8px; }
@@ -122,7 +114,6 @@
 
     #loading { display: none; color: #6b7280; margin-top: 12px; }
 
-    /* Dark mode */
     body.dark { background: #0f172a; color: #f1f5f9; }
     body.dark #sidebar { background: #1e293b; border-color: #334155; }
     body.dark #searchInput { background: #0f172a; color: #f1f5f9; border-color: #334155; }
@@ -138,7 +129,6 @@
 </head>
 <body>
 
-  <!-- Sidebar -->
   <div id="sidebar">
     <h2>💬 Chat History</h2>
     <input id="searchInput" type="text" placeholder="🔍 Search history..."
@@ -146,7 +136,6 @@
     <div id="history-list" style="display:flex;flex-direction:column;gap:10px;"></div>
   </div>
 
-  <!-- Main -->
   <div id="main">
     <h1>AI Tool</h1>
     <button onclick="toggleTheme()" id="themeBtn">🌙 Dark Mode</button>
@@ -154,7 +143,7 @@
     <label>Provider</label>
     <select id="provider" onchange="updateModels()">
       <option value="groq">Groq</option>
-      <option value="together">Together AI</option>
+      <option value="cloudflare">Cloudflare AI</option>
     </select>
 
     <label>Model</label>
@@ -202,12 +191,12 @@
         { value: "llama-3.1-8b",  label: "Llama 3.1 8b" },
         { value: "mixtral-8x7b",  label: "Mixtral 8x7b" },
       ];
-      const togetherModels = [
-        { value: "llama-3.3-70b", label: "Llama 3.3 70b (Free)" },
-        { value: "llama-3.1-8b",  label: "Llama 3.1 8b (Free)" },
-        { value: "deepseek-r1",   label: "DeepSeek R1 (Free)" },
+      const cloudflareModels = [
+        { value: "llama-3.3-70b", label: "Llama 3.3 70b" },
+        { value: "llama-3.1-8b",  label: "Llama 3.1 8b" },
+        { value: "mistral-7b",    label: "Mistral 7b" },
       ];
-      const models = provider === "together" ? togetherModels : groqModels;
+      const models = provider === "cloudflare" ? cloudflareModels : groqModels;
       modelSelect.innerHTML = models.map(m =>
         `<option value="${m.value}">${m.label}</option>`
       ).join("");
@@ -228,7 +217,7 @@
       const historyList = document.getElementById("history-list");
       historyList.innerHTML = "";
       if (pairs.length === 0) {
-        historyList.innerHTML = `<p style="font-size:13px;color:#9ca3af;">No results.</p>`;
+        historyList.innerHTML = `<p style="font-size:13px;color:#9ca3af;">No history yet.</p>`;
         return;
       }
       pairs.forEach(function (pair) {
@@ -256,7 +245,6 @@
           pairs.push({ you: history[i].content, ai: history[i + 1].content });
         }
       }
-
       if (pairs.length === 0) return;
 
       const res = await fetch("/search", {
@@ -264,7 +252,6 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query, history: pairs })
       });
-
       const data = await res.json();
       renderHistoryEntries(data.results || []);
     }

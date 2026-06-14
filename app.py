@@ -1,17 +1,20 @@
 from dotenv import load_dotenv
 load_dotenv()
 import os
+import httpx
 import numpy as np
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from groq import Groq
-from together import Together
 
 app = Flask(__name__)
 CORS(app)
 
 groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-together_client = Together(api_key=os.environ.get("TOGETHER_API_KEY"))
+
+CF_ACCOUNT_ID = os.environ.get("CLOUDFLARE_ACCOUNT_ID")
+CF_API_TOKEN = os.environ.get("CLOUDFLARE_API_TOKEN")
+CF_BASE_URL = f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT_ID}/ai/run"
 
 MODELS = {
     "groq": {
@@ -19,10 +22,10 @@ MODELS = {
         "llama-3.1-8b":  "llama-3.1-8b-instant",
         "mixtral-8x7b":  "mixtral-8x7b-32768",
     },
-    "together": {
-        "llama-3.3-70b":  "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
-        "llama-3.1-8b":   "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo-Free",
-        "deepseek-r1":    "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free",
+    "cloudflare": {
+        "llama-3.3-70b": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+        "llama-3.1-8b":  "@cf/meta/llama-3.1-8b-instruct",
+        "mistral-7b":    "@cf/mistral/mistral-7b-instruct-v0.1",
     }
 }
 
@@ -34,6 +37,36 @@ system_prompts = {
     "5": "You are an experienced hiring manager conducting a real interview. Given the topic or role, generate 8–10 interview questions across three categories: (1) Conceptual: testing theoretical understanding, (2) Practical: testing hands-on experience, (3) Behavioral: testing how the candidate handles real situations. Format them clearly under each category label.",
     "6": "You are an expert academic coach. Generate a structured, realistic, day-by-day study plan for the given subject, covering phase breakdown, daily tasks with resources, milestones, and a buffer rule for missed days."
 }
+
+def cloudflare_chat(model_id, messages):
+    headers = {
+        "Authorization": f"Bearer {CF_API_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    payload = {"messages": messages}
+    response = httpx.post(
+        f"{CF_BASE_URL}/{model_id}",
+        headers=headers,
+        json=payload,
+        timeout=60
+    )
+    result = response.json()
+    return result["result"]["response"]
+
+def cloudflare_embed(text):
+    headers = {
+        "Authorization": f"Bearer {CF_API_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    payload = {"text": [text]}
+    response = httpx.post(
+        f"{CF_BASE_URL}/@cf/baai/bge-base-en-v1.5",
+        headers=headers,
+        json=payload,
+        timeout=60
+    )
+    result = response.json()
+    return result["result"]["data"][0]
 
 @app.route("/")
 def home():
@@ -56,21 +89,18 @@ def generate():
     system = system_prompts[choice]
 
     try:
+        messages = [{"role": "system", "content": system}]
+        messages.extend(history)
+        messages.append({"role": "user", "content": user_input})
+
         if provider == "groq":
             model_id = MODELS["groq"].get(model_key, "llama-3.3-70b-versatile")
-            messages = [{"role": "system", "content": system}]
-            messages.extend(history)
-            messages.append({"role": "user", "content": user_input})
             response = groq_client.chat.completions.create(model=model_id, messages=messages)
             reply = response.choices[0].message.content
 
-        elif provider == "together":
-            model_id = MODELS["together"].get(model_key, "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free")
-            messages = [{"role": "system", "content": system}]
-            messages.extend(history)
-            messages.append({"role": "user", "content": user_input})
-            response = together_client.chat.completions.create(model=model_id, messages=messages)
-            reply = response.choices[0].message.content
+        elif provider == "cloudflare":
+            model_id = MODELS["cloudflare"].get(model_key, "@cf/meta/llama-3.3-70b-instruct-fp8-fast")
+            reply = cloudflare_chat(model_id, messages)
 
         else:
             return jsonify({"error": "Unknown provider."}), 400
@@ -90,20 +120,10 @@ def search():
         return jsonify({"results": []})
 
     try:
-        all_texts = [query] + [pair["you"] for pair in history]
-
-        vecs = []
-        for text in all_texts:
-            response = together_client.embeddings.create(
-                model="togethercomputer/m2-bert-80M-8k-retrieval",
-                input=text
-            )
-            vecs.append(np.array(response.data[0].embedding))
-
-        query_vec = vecs[0]
+        query_vec = np.array(cloudflare_embed(query))
         scores = []
-        for i, pair in enumerate(history):
-            vec = vecs[i + 1]
+        for pair in history:
+            vec = np.array(cloudflare_embed(pair["you"]))
             similarity = float(np.dot(query_vec, vec) / (np.linalg.norm(query_vec) * np.linalg.norm(vec)))
             scores.append({"pair": pair, "score": similarity})
 
