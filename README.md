@@ -16,8 +16,10 @@ https://basic-ai-tool.onrender.com (deployed using render.com)
 - **Generate Interview Questions**:Enter a topic and get theoretical and practical questions which are asked in interviews
 - **Generate a Study Plan**:Enter all the specific requirements and get a well structured study plan which you can follow
 
-  **Additional Features**
+##Additional Features
+  
   -**Chat History**: You can see the chat history on the side panel. You can also access previous chats by searching relevant  terms and also clear chat history.
+  
   -**Mode**: Change from Light mode to Dark mode or vice versa any time you like
 
 ## How It Works
